@@ -1,0 +1,7 @@
+SELECT ?country ?countryLabel ?state ?stateLabel WHERE {
+  ?country wdt:P31 wd:Q6256 .
+  OPTIONAL {
+  ?country wdt:P150 ?state .
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
