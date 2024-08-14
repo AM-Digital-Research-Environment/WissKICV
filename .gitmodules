@@ -1,0 +1,3 @@
+[submodule "wisski_py"]
+	path = wisski_py
+	url = https://github.com/neerajamubt/wisski_py.git
