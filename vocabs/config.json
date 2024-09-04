@@ -1,0 +1,5 @@
+{
+    "username": "your_WissKI_API_username",
+    "password": "your_WissKI_API_password",
+    "mongo_***REMOVED***_uri": "your_MongoDB_Client_Admin_URI"
+}
