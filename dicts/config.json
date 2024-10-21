@@ -1,5 +1,14 @@
 {
-    "username": "your_WissKI_API_username",
-    "password": "your_WissKI_API_password",
-    "mongo_uri": "your_MongoDB_Client_Admin_URI"
+    "mongo_uri": "your_MongoDB_Client_Admin_URI",
+    "sparql": {
+        "username": "your_sparql_username",
+        "password": "your_sparql_password",
+        "endpoint": "your_sparql_endpoint_url"
+    },
+    "wisski": {
+        "username": "your_WissKI_API_username",
+        "password": "your_WissKI_API_password",
+        "endpoint": "your_WissKi_endpoint_url",
+        "pathbuilder": "preferred_pathbuilder"
+    }
 }
