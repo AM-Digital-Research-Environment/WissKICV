@@ -75,7 +75,6 @@ class ProjectFields:
         }
         self._project_document = document
 
-    @property
     def _project_fields(self):
         return {
             self._dicts.get('fields').get('f_project_id'): self.identifier,
@@ -190,7 +189,6 @@ class ProjectManage(ProjectFields):
         else:
             setattr(self, '_function', mode_dict.get(run_mode))
 
-    @property
     def generate_entity(self) -> Entity:
         """
         :argument: bson document/dict object to be inserted to wisski
@@ -198,13 +196,13 @@ class ProjectManage(ProjectFields):
         """
         _project_entity_obj = Entity(self._api,
                                      bundle_id=self._dicts.get('bundle').get('g_project'),
-                                     fields=self._project_fields)
+                                     fields=self._project_fields())
         return _project_entity_obj
 
     def update_fields(self) -> list:
         _fields_for_update = []
         for _field in self._edit_entity.fields.keys():
-            if self._edit_entity.fields[_field] != self._project_fields.get(_field):
+            if self._edit_entity.fields[_field] != self._project_fields().get(_field):
                 _fields_for_update.append(_field)
 
         return list(set(_fields_for_update))
@@ -215,17 +213,17 @@ class ProjectManage(ProjectFields):
 
             case "insert":
                 if dry_run:
-                    return self.generate_entity.fields
+                    return self.generate_entity().fields
                 else:
 
-                    self._api.save(self.generate_entity)
+                    self._api.save(self.generate_entity())
 
             case "update":
                 if dry_run:
                     print("Fields being updated are:\n" + "\n".join(self.update_fields()))
                 else:
                     for _field_ids in self.update_fields():
-                        self._edit_entity.fields[_field_ids] = self._project_fields[_field_ids]
+                        self._edit_entity.fields[_field_ids] = self._project_fields()[_field_ids]
                     self._api.save(self._edit_entity)
             case _:
                 raise Exception("No run mode specified. Use set_mode method to set run mode (0/1).")
