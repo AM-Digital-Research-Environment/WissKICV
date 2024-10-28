@@ -1,6 +1,8 @@
 # Libraries
 import requests
+import pandas as pd
 import json
+from datetime import datetime
 from wisski.api import Api, Pathbuilder, Entity
 from pymongo import MongoClient
 from SPARQLWrapper import JSON, SPARQLWrapper
@@ -41,13 +43,12 @@ class Core:
                               _auth_dict.get('password'))
         if query:
             if qualifier:
-                sparql.setQuery(query.format({
-                    "term": search_value,
-                    "authority": qualifier
-                }))
+                sparql.setQuery(query.format(term=search_value, authority=qualifier))
             else:
                 sparql.setQuery(query.format(search_value=search_value))
 
+        query_response = sparql.queryAndConvert()
+        return str(query_response["results"]["bindings"][0]["id"]["value"])
 
     @staticmethod
     def mongo_data(project_ids: list[str] | str):
@@ -56,11 +57,11 @@ class Core:
             file.close()
         mongo_client = MongoClient(_auth)
         project_db = mongo_client['dev']
-        project_collection = project_db['projectInfo']
+        project_collection = project_db['projectsData']
         if isinstance(project_ids, list):
-            return list(project_collection.find({"Project_ID" : {"$in": project_ids}}))
+            return list(project_collection.find({"id": {"$in": project_ids}}))
         else:
-            return list(project_collection.find({"Project_ID": project_ids}))
+            return list(project_collection.find({"id": project_ids}))
 
 
 class ProjectFields:
@@ -73,72 +74,111 @@ class ProjectFields:
             'queries': requests.get(f'{self._source_url}/dicts/sparql_queries.json').json()
         }
         self._project_document = document
-        if document:
-            self._project_fields = {
-                self._dicts.get('fields').get('f_project_id'): self.identifier,
-                self._dicts.get('fields').get('f_project_name'): self.name,
-                self._dicts.get('fields').get('f_proj_duration'): self.duration,
-                self._dicts.get('fields').get('f_proj_assoc_institution'): self.institution,
-                self._dicts.get('fields').get('f_proj_research_section'): self.research_section
-            }
+
+    @property
+    def _project_fields(self):
+        return {
+            self._dicts.get('fields').get('f_project_id'): self.identifier,
+            self._dicts.get('fields').get('f_project_name'): self.name,
+            self._dicts.get('fields').get('f_proj_duration'): self.duration,
+            self._dicts.get('fields').get('f_proj_assoc_institution'): self.institution,
+            self._dicts.get('fields').get('f_proj_research_section'): self.research_section,
+            self._dicts.get('bundles').get('g_project_assoc_person'): self.associated_persons,
+            self._dicts.get('fields').get('f_proj_summary'): self.summary,
+        }
 
     @property
     def identifier(self) -> list:
         if self._project_document.get('id'):
-            return [self._project_document.get('Project_ID')]
+            return [self._project_document.get('id')]
         else:
             return []
 
     @property
     def name(self) -> list:
         if self._project_document.get('name'):
-            return [self._project_document.get('Project_Name')]
+            return [self._project_document.get('name')]
         else:
             return []
 
     @property
     def duration(self) -> list:
-        if self._project_document.get('duration'):
-            return [self._project_document.get('f_proj_duration')]
+        if self._project_document.get('date'):
+            date = self._project_document.get('date')
+            start = "Not Available" if pd.isna(date.get('start')) else date.get('start').strftime("%d/%m/%Y")
+            end = "Not Available" if pd.isna(date.get('end')) else date.get('end').strftime("%d/%m/%Y")
+            return [start + " - " + end]
         else:
             return []
 
     @property
     def institution(self) -> list:
         if self._project_document.get('institutions'):
-            return [self._project_document.get('f_proj_assoc_institution')]
+            return [self._project_document.get('institutions')]
         else:
             return []
 
     @property
     def research_section(self):
         if self._project_document.get('researchSection'):
-            _research_sections = self._project_document.get('f_proj_assoc_institution')
+            _research_sections = self._project_document.get('researchSection')
             _res_section_list = []
             for topic in _research_sections:
                 _res_section_list.append(Core.entity_uri(search_value=topic,
                                                          qualifier="66fbf3043e468",
-                                                         query_string=self._dicts.get('queries').get('genre')))
+                                                         query=self._dicts.get('queries').get('genre')))
             return _res_section_list
         else:
             return []
 
-    # Todo: Generate Enity object for associated persons
     @property
     def associated_persons(self) -> list:
-        return []
+        _associated_persons_list = []
+        for role, role_mapped in {'pi': 'Research team head', 'members': 'Research team member'}.items():
+            if not pd.isna(self._project_document.get(role)):
+                for person in self._project_document.get(role):
+                    _associated_persons_list.append(
+                        Entity(
+                            api=Core.set_api(),
+                            fields={
+                                self._dicts.get('fields').get('f_proj_assoc_pers_role'): Core.entity_uri(
+                                    search_value=role_mapped,
+                                    query=self._dicts.get('queries').get('role')
+                                ),
+                                self._dicts.get('fields').get('f_proj_assoc_pers_role_holder'): Core.entity_uri(
+                                    search_value=person,
+                                    query=self._dicts.get('queries').get('person')
+                                )
+                            },
+                            bundle_id=self._dicts.get('bundles').get("g_project_assoc_person")
+                        )
+                    )
+        return _associated_persons_list
+
+    @property
+    def summary(self):
+        if not pd.isna(self._project_document.get('description')):
+            return [self._project_document.get('description')]
+        else:
+            return []
+
 
 class ProjectManage(ProjectFields):
 
     _api = Core.set_api()
-    _document = {}
-    _function = ""
-    _edit_entity = Entity()
 
+    def __init__(self):
+        super().__init__()
+        self._function = ""
+        self._edit_entity = ""
 
     def set_document(self, document: dict):
-        setattr(self, "_document", document)
-        super().__init__(self._document)
+        setattr(self, "_project_document", document)
+        if self._function == "update":
+            setattr(self,
+                    "_edit_entity",
+                    self._api.get_entity(Core.entity_uri(search_value=self._project_document.get('id'),
+                                                         query=self._dicts.get('queries').get('projectid'))))
 
     def set_mode(self, run_mode: int):
         mode_dict = {
@@ -161,21 +201,13 @@ class ProjectManage(ProjectFields):
                                      fields=self._project_fields)
         return _project_entity_obj
 
-    def update(self, dre_id: str | list[str], fields: str | list[str]) -> Entity:
+    def update_fields(self) -> list:
+        _fields_for_update = []
+        for _field in self._edit_entity.fields.keys():
+            if self._edit_entity.fields[_field] != self._project_fields.get(_field):
+                _fields_for_update.append(_field)
 
-        _fields = [fields] if isinstance(fields, str) else fields
-        _ids = [dre_id] if isinstance(dre_id, str) else dre_id
-
-        for doc_id in _ids:
-            setattr(self,
-                    "_edit_entity",
-                    Core.entity_uri(search_value=doc_id,
-                                    query=self._dicts.get('dreID')))
-            # Todo: Verification Stage
-#            for _field in self._edit_entity.fields.keys():
-#                if all(isinstance(elem, Entity) for elem in self._edit_entity.fields[_field]):
-#                    for ent in self._edit_entity.fields[_field]:
-
+        return list(set(_fields_for_update))
 
     def run(self, dry_run: bool = False):
 
@@ -185,10 +217,15 @@ class ProjectManage(ProjectFields):
                 if dry_run:
                     return self.generate_entity.fields
                 else:
+
                     self._api.save(self.generate_entity)
 
             case "update":
-                pass
-
+                if dry_run:
+                    print("Fields being updated are:\n" + "\n".join(self.update_fields()))
+                else:
+                    for _field_ids in self.update_fields():
+                        self._edit_entity.fields[_field_ids] = self._project_fields[_field_ids]
+                    self._api.save(self._edit_entity)
             case _:
                 raise Exception("No run mode specified. Use set_mode method to set run mode (0/1).")
