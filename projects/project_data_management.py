@@ -113,7 +113,15 @@ class ProjectFields:
     @property
     def institution(self) -> list:
         if self._project_document.get('institutions'):
-            return [self._project_document.get('institutions')]
+            _inst_list = []
+            for inst in self._project_document.get('institutions'):
+                _inst_list.append(
+                    Core.entity_uri(
+                        search_value=inst,
+                        query=self._dicts.get('queries').get('institution')
+                    )
+                )
+            return _inst_list
         else:
             return []
 
