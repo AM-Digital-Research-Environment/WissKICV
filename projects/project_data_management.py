@@ -207,13 +207,21 @@ class ProjectManage(ProjectFields):
                                      fields=self._project_fields())
         return _project_entity_obj
 
-    def update_fields(self) -> list:
+    def update_fields(self) -> dict:
+        def get_key(value):
+            try:
+                return list(self._dicts.get('fields').keys())[list(self._dicts.get('fields').values()).index(value)]
+            except ValueError:
+                return list(self._dicts.get('bundles').keys())[list(self._dicts.get('bundles').values()).index(value)]
         _fields_for_update = []
+        _fields_keys = []
+        compare_list = self._project_fields()
         for _field in self._edit_entity.fields.keys():
-            if self._edit_entity.fields[_field] != self._project_fields().get(_field):
+            if self._edit_entity.fields[_field] != compare_list.get(_field):
                 _fields_for_update.append(_field)
+                _fields_keys.append(get_key(_field))
 
-        return list(set(_fields_for_update))
+        return {'ids': list(set(_fields_for_update)), 'keys':  list(set(_fields_keys))}
 
     def run(self, dry_run: bool = False):
 
@@ -228,10 +236,11 @@ class ProjectManage(ProjectFields):
 
             case "update":
                 if dry_run:
-                    print("Fields being updated are:\n" + "\n".join(self.update_fields()))
+                    print("Fields to be updated are:\n" + "\n".join(self.update_fields()['keys']))
                 else:
-                    for _field_ids in self.update_fields():
-                        self._edit_entity.fields[_field_ids] = self._project_fields()[_field_ids]
+                    _source_data = self._project_fields()
+                    for _field_ids in self.update_fields()['ids']:
+                        self._edit_entity.fields[_field_ids] = _source_data[_field_ids]
                     self._api.save(self._edit_entity)
             case _:
                 raise Exception("No run mode specified. Use set_mode method to set run mode (0/1).")
