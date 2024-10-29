@@ -104,8 +104,8 @@ class ProjectFields:
     def duration(self) -> list:
         if self._project_document.get('date'):
             date = self._project_document.get('date')
-            start = "Not Available" if pd.isna(date.get('start')) else date.get('start').strftime("%d/%m/%Y")
-            end = "Not Available" if pd.isna(date.get('end')) else date.get('end').strftime("%d/%m/%Y")
+            start = "Not Available" if pd.isna(date.get('start')) else date.get('start').strftime("%Y")
+            end = "Not Available" if pd.isna(date.get('end')) else date.get('end').strftime("%Y")
             return [start + " - " + end]
         else:
             return []
