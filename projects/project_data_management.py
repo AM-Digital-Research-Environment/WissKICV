@@ -181,11 +181,6 @@ class ProjectManage(ProjectFields):
 
     def set_document(self, document: dict):
         setattr(self, "_project_document", document)
-        if self._function == "update":
-            setattr(self,
-                    "_edit_entity",
-                    self._api.get_entity(Core.entity_uri(search_value=self._project_document.get('id'),
-                                                         query=self._dicts.get('queries').get('projectid'))))
 
     def set_mode(self, run_mode: int):
         mode_dict = {
@@ -213,6 +208,10 @@ class ProjectManage(ProjectFields):
                 return list(self._dicts.get('fields').keys())[list(self._dicts.get('fields').values()).index(value)]
             except ValueError:
                 return list(self._dicts.get('bundles').keys())[list(self._dicts.get('bundles').values()).index(value)]
+        setattr(self,
+                "_edit_entity",
+                self._api.get_entity(Core.entity_uri(search_value=self._project_document.get('id'),
+                                                     query=self._dicts.get('queries').get('projectid'))))
         _fields_for_update = []
         _fields_keys = []
         compare_list = self._project_fields()
