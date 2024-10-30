@@ -148,14 +148,14 @@ class ProjectFields:
                         Entity(
                             api=Core.set_api(),
                             fields={
-                                self._dicts.get('fields').get('f_proj_assoc_pers_role'): Core.entity_uri(
+                                self._dicts.get('fields').get('f_proj_assoc_pers_role'): [Core.entity_uri(
                                     search_value=role_mapped,
                                     query=self._dicts.get('queries').get('role')
-                                ),
-                                self._dicts.get('fields').get('f_proj_assoc_pers_role_holder'): Core.entity_uri(
+                                )],
+                                self._dicts.get('fields').get('f_proj_assoc_pers_role_holder'): [Core.entity_uri(
                                     search_value=person,
                                     query=self._dicts.get('queries').get('person')
-                                )
+                                )]
                             },
                             bundle_id=self._dicts.get('bundles').get("g_project_assoc_person")
                         )
