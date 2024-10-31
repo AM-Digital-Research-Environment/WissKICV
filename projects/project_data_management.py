@@ -142,7 +142,7 @@ class ProjectFields:
     def associated_persons(self) -> list:
         _associated_persons_list = []
         for role, role_mapped in {'pi': 'Research team head', 'members': 'Research team member'}.items():
-            if not pd.isna(self._project_document.get(role)):
+            if not isinstance(self._project_document.get(role), float):
                 for person in self._project_document.get(role):
                     _associated_persons_list.append(
                         Entity(
