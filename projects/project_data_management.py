@@ -198,7 +198,7 @@ class ProjectManage(ProjectFields):
         :return: if dry_run set to true return staged data else save entity
         """
         _project_entity_obj = Entity(self._api,
-                                     bundle_id=self._dicts.get('bundle').get('g_project'),
+                                     bundle_id=self._dicts.get('bundles').get('g_project'),
                                      fields=self._project_fields())
         return _project_entity_obj
 
